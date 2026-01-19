@@ -278,7 +278,7 @@ def train_lora(image,
         ]
     )
 
-    for step in progress.tqdm(range(lora_step), desc="training LoRA"):
+    for step in progress.tqdm(range(lora_step), desc="training LoRA", disable=False):
         unet.train()
         image_batch = []
         image_pil_batch = []
