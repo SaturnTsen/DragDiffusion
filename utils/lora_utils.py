@@ -38,6 +38,7 @@ from diffusers.training_utils import unet_lora_state_dict
 from diffusers.utils import check_min_version, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 
+from tqdm import tqdm
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.24.0")
 
@@ -213,14 +214,14 @@ def train_lora(image,
                 LoRALinearLayer(
                     in_features=attn_module.add_k_proj.in_features,
                     out_features=attn_module.add_k_proj.out_features,
-                    rank=args.rank,
+                    rank=args.rank, # type: ignore
                 )
             )
             attn_module.add_v_proj.set_lora_layer(
                 LoRALinearLayer(
                     in_features=attn_module.add_v_proj.in_features,
                     out_features=attn_module.add_v_proj.out_features,
-                    rank=args.rank,
+                    rank=args.rank, # type: ignore
                 )
             )
             unet_lora_parameters.extend(attn_module.add_k_proj.lora_layer.parameters())
@@ -251,7 +252,7 @@ def train_lora(image,
     # optimizer = accelerator.prepare_optimizer(optimizer)
     # lr_scheduler = accelerator.prepare_scheduler(lr_scheduler)
 
-    unet,optimizer,lr_scheduler = accelerator.prepare(unet,optimizer,lr_scheduler)
+    unet,optimizer,lr_scheduler = accelerator.prepare(unet,optimizer,lr_scheduler) # type: ignore
 
     # initialize text embeddings
     with torch.no_grad():
@@ -278,7 +279,8 @@ def train_lora(image,
         ]
     )
 
-    for step in progress.tqdm(range(lora_step), desc="training LoRA", disable=False):
+    console_pbar = tqdm(total=lora_step, desc="training LoRA")
+    for step in progress.tqdm(range(lora_step), desc="training LoRA"):
         unet.train()
         image_batch = []
         image_pil_batch = []
@@ -344,6 +346,8 @@ def train_lora(image,
                 text_encoder_lora_layers=None,
             )
             # unet = unet.to(torch.float16)
+        console_pbar.update(1)
+    console_pbar.close()
 
     # save the trained lora
     # unet = unet.to(torch.float32)

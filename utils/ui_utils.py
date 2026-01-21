@@ -162,6 +162,7 @@ def train_lora_interface(original_image,
         lora_batch_size,
         lora_rank,
         progress)
+    print("Training LoRA Done!")
     return "Training LoRA Done!"
 
 def preprocess_image(image,
