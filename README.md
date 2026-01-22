@@ -63,6 +63,8 @@ To install the required libraries, simply run the following command:
 ```
 conda env create -f environment.yaml
 conda activate dragdiff
+cd DragDiffusion
+pip install -r requirements.txt
 ```
 
 ## Run DragDiffusion
