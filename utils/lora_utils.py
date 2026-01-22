@@ -21,9 +21,6 @@ import diffusers
 from diffusers import (
     AutoencoderKL,
     DDPMScheduler,
-    DiffusionPipeline,
-    DPMSolverMultistepScheduler,
-    StableDiffusionPipeline,
     UNet2DConditionModel,
 )
 from diffusers.loaders import AttnProcsLayers, LoraLoaderMixin
@@ -38,6 +35,7 @@ from diffusers.training_utils import unet_lora_state_dict
 from diffusers.utils import check_min_version, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 
+import tqdm
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.24.0")
 
@@ -99,23 +97,25 @@ def encode_prompt(text_encoder, input_ids, attention_mask, text_encoder_use_atte
 
 # model_path: path of the model
 # image: input image, have not been pre-processed
-# save_lora_path: the path to save the lora
+# lora_save_dir: the path to save the lora
 # prompt: the user input prompt
-# lora_step: number of lora training step
+# lora_steps: number of lora training step
 # lora_lr: learning rate of lora training
 # lora_rank: the rank of lora
 # save_interval: the frequency of saving lora checkpoints
-def train_lora(image,
+def train_lora(
+    image,
     prompt,
     model_path,
     vae_path,
-    save_lora_path,
-    lora_step,
+    lora_save_dir,
+    lora_steps,
     lora_lr,
     lora_batch_size,
     lora_rank,
-    progress,
-    save_interval=-1):
+    progress = None,
+    save_interval=-1
+):
     # initialize accelerator
     accelerator = Accelerator(
         gradient_accumulation_steps=1,
@@ -137,21 +137,21 @@ def train_lora(image,
         model_path, subfolder="text_encoder", revision=None
     )
     if vae_path == "default":
-        vae = AutoencoderKL.from_pretrained(
-            model_path, subfolder="vae", revision=None
-        )
+        vae = AutoencoderKL.from_pretrained(model_path, subfolder="vae", revision=None)
     else:
         vae = AutoencoderKL.from_pretrained(vae_path)
+        
     unet = UNet2DConditionModel.from_pretrained(
         model_path, subfolder="unet", revision=None
     )
-    pipeline = StableDiffusionPipeline.from_pretrained(
-                    pretrained_model_name_or_path=model_path,
-                    vae=vae,
-                    unet=unet,
-                    text_encoder=text_encoder,
-                    scheduler=noise_scheduler,
-                    torch_dtype=torch.float16)
+    
+    # pipeline = StableDiffusionPipeline.from_pretrained(
+    #                 pretrained_model_name_or_path=model_path,
+    #                 vae=vae,
+    #                 unet=unet,
+    #                 text_encoder=text_encoder,
+    #                 scheduler=noise_scheduler,
+    #                 torch_dtype=torch.float16)
 
     # set device and dtype
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -213,14 +213,14 @@ def train_lora(image,
                 LoRALinearLayer(
                     in_features=attn_module.add_k_proj.in_features,
                     out_features=attn_module.add_k_proj.out_features,
-                    rank=args.rank,
+                    rank=args.rank, # type: ignore
                 )
             )
             attn_module.add_v_proj.set_lora_layer(
                 LoRALinearLayer(
                     in_features=attn_module.add_v_proj.in_features,
                     out_features=attn_module.add_v_proj.out_features,
-                    rank=args.rank,
+                    rank=args.rank, # type: ignore
                 )
             )
             unet_lora_parameters.extend(attn_module.add_k_proj.lora_layer.parameters())
@@ -241,17 +241,13 @@ def train_lora(image,
         "constant",
         optimizer=optimizer,
         num_warmup_steps=0,
-        num_training_steps=lora_step,
+        num_training_steps=lora_steps,
         num_cycles=1,
         power=1.0,
     )
 
-    # prepare accelerator
-    # unet_lora_layers = accelerator.prepare_model(unet_lora_layers)
-    # optimizer = accelerator.prepare_optimizer(optimizer)
-    # lr_scheduler = accelerator.prepare_scheduler(lr_scheduler)
-
-    unet,optimizer,lr_scheduler = accelerator.prepare(unet,optimizer,lr_scheduler)
+    # prepare everything with accelerator
+    unet,optimizer,lr_scheduler = accelerator.prepare(unet,optimizer,lr_scheduler) # type: ignore
 
     # initialize text embeddings
     with torch.no_grad():
@@ -278,7 +274,10 @@ def train_lora(image,
         ]
     )
 
-    for step in progress.tqdm(range(lora_step), desc="training LoRA"):
+    if progress is None:
+        progress = tqdm
+    
+    for step in progress.tqdm(range(lora_steps), desc="training LoRA"):
         unet.train()
         image_batch = []
         image_pil_batch = []
@@ -330,7 +329,7 @@ def train_lora(image,
         optimizer.zero_grad()
 
         if save_interval > 0 and (step + 1) % save_interval == 0:
-            save_lora_path_intermediate = os.path.join(save_lora_path, str(step+1))
+            save_lora_path_intermediate = os.path.join(lora_save_dir, str(step+1))
             if not os.path.isdir(save_lora_path_intermediate):
                 os.mkdir(save_lora_path_intermediate)
             # unet = unet.to(torch.float32)
@@ -352,7 +351,7 @@ def train_lora(image,
     # unet_lora_layers = accelerator.unwrap_model(unet_lora_layers)
     unet_lora_layers = unet_lora_state_dict(unet)
     LoraLoaderMixin.save_lora_weights(
-        save_directory=save_lora_path,
+        save_directory=lora_save_dir,
         unet_lora_layers=unet_lora_layers,
         text_encoder_lora_layers=None,
     )

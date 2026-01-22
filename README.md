@@ -1,3 +1,14 @@
+## Modifications
+
+Compared to the original DragDiff implementation, we:
+- Redesigned the interaction interface, since gradio discarded its powerful image editor and caused compatibility issues.
+- Added a notebook-based version for easier experimentation
+- Introduced additional 3D supervision signals
+
+This work is done by Yiming Chen and Linh Vu Tu for the final project of Multimodal AI at Ecole Polytechnique.
+
+For the original DragDiffusion implementation, please refer to the following content.
+
 <p align="center">
   <h1 align="center">DragDiffusion: Harnessing Diffusion Models for Interactive Point-based Image Editing</h1>
   <p align="center">
@@ -63,6 +74,8 @@ To install the required libraries, simply run the following command:
 ```
 conda env create -f environment.yaml
 conda activate dragdiff
+cd DragDiffusion
+pip install -r requirements.txt
 ```
 
 ## Run DragDiffusion

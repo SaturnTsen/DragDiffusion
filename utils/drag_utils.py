@@ -119,7 +119,7 @@ def drag_diffusion_update(model,
             # do point tracking to update handle points before computing motion supervision loss
             if step_idx != 0:
                 handle_points = point_tracking(F0, F1, handle_points, handle_points_init, args)
-                print('new handle points', handle_points)
+                # print('new handle points', handle_points)
 
             # break if all handle points have reached the targets
             if check_handle_reach_target(handle_points, target_points):
@@ -151,7 +151,7 @@ def drag_diffusion_update(model,
             if using_mask:
                 loss += args.lam * ((x_prev_updated-x_prev_0)*(1.0-interp_mask)).abs().sum()
             # loss += args.lam * ((init_code_orig-init_code)*(1.0-interp_mask)).abs().sum()
-            print('loss total=%f'%(loss.item()))
+            # print('loss total=%f'%(loss.item()))
 
         scaler.scale(loss).backward()
         scaler.step(optimizer)

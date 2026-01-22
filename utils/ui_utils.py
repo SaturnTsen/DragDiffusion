@@ -16,6 +16,7 @@
 # limitations under the License. 
 # *************************************************************************
 
+import hashlib
 import os
 import cv2
 import numpy as np
@@ -161,6 +162,7 @@ def train_lora_interface(original_image,
         lora_batch_size,
         lora_rank,
         progress)
+    print("Training LoRA Done!")
     return "Training LoRA Done!"
 
 def preprocess_image(image,
@@ -426,6 +428,20 @@ def gen_img(
     gen_image = gen_image.cpu().permute(0, 2, 3, 1).numpy()[0]
     gen_image = (gen_image * 255).astype(np.uint8)
 
+    def debug_save_img(img):
+        import hashlib
+        save_root = "generated_results"
+        os.makedirs(save_root, exist_ok=True)
+        prompt_hash = hashlib.md5(
+            (prompt + str(seed)).encode("utf-8")
+        ).hexdigest()[:8]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_name = f"{timestamp}_seed{seed}_{prompt_hash}"
+        img_path = os.path.join(save_root, save_name + ".png")
+        Image.fromarray(img).save(img_path)
+
+    debug_save_img(gen_image)
+    
     if height < width:
         # need to do this due to Gradio's bug
         return gr.Image.update(value=gen_image, height=int(length*height/width), width=length, interactive=True), \
