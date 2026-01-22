@@ -21,9 +21,6 @@ import diffusers
 from diffusers import (
     AutoencoderKL,
     DDPMScheduler,
-    DiffusionPipeline,
-    DPMSolverMultistepScheduler,
-    StableDiffusionPipeline,
     UNet2DConditionModel,
 )
 from diffusers.loaders import AttnProcsLayers, LoraLoaderMixin
@@ -140,21 +137,21 @@ def train_lora(
         model_path, subfolder="text_encoder", revision=None
     )
     if vae_path == "default":
-        vae = AutoencoderKL.from_pretrained(
-            model_path, subfolder="vae", revision=None
-        )
+        vae = AutoencoderKL.from_pretrained(model_path, subfolder="vae", revision=None)
     else:
         vae = AutoencoderKL.from_pretrained(vae_path)
+        
     unet = UNet2DConditionModel.from_pretrained(
         model_path, subfolder="unet", revision=None
     )
-    pipeline = StableDiffusionPipeline.from_pretrained(
-                    pretrained_model_name_or_path=model_path,
-                    vae=vae,
-                    unet=unet,
-                    text_encoder=text_encoder,
-                    scheduler=noise_scheduler,
-                    torch_dtype=torch.float16)
+    
+    # pipeline = StableDiffusionPipeline.from_pretrained(
+    #                 pretrained_model_name_or_path=model_path,
+    #                 vae=vae,
+    #                 unet=unet,
+    #                 text_encoder=text_encoder,
+    #                 scheduler=noise_scheduler,
+    #                 torch_dtype=torch.float16)
 
     # set device and dtype
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -249,11 +246,7 @@ def train_lora(
         power=1.0,
     )
 
-    # prepare accelerator
-    # unet_lora_layers = accelerator.prepare_model(unet_lora_layers)
-    # optimizer = accelerator.prepare_optimizer(optimizer)
-    # lr_scheduler = accelerator.prepare_scheduler(lr_scheduler)
-
+    # prepare everything with accelerator
     unet,optimizer,lr_scheduler = accelerator.prepare(unet,optimizer,lr_scheduler) # type: ignore
 
     # initialize text embeddings

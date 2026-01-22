@@ -25,6 +25,7 @@ from PIL import Image
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import StableDiffusionPipeline
+from diffusers.utils import deprecate
 
 # override unet forward
 # The only difference from diffusers:
