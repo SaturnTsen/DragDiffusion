@@ -4,9 +4,9 @@ channels:
   - defaults
   - nvidia
 dependencies:
-  - python=3.8.5
+  - python=3.9
   - pip=22.3.1
-  - cudatoolkit=11.8
+  - cuda-toolkit=11.8
   - pip:
       - torch==2.0.0+cu118
       - torchvision==0.15.1+cu118
